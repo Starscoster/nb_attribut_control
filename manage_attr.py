@@ -1,5 +1,9 @@
 import maya.cmds
 
+#######################################################################################################################
+#                Create, delete, copy attribut
+#######################################################################################################################
+
 def create_attribut (object_, attribut_name,
                     attribut_type = None,
                     attribut_short_name = None, 
@@ -76,6 +80,117 @@ def delete_attribut (object_, attribut) -> None :
     """
     cmds.deleteAttr("{}.{}".format(object_, attribut))
 
+
+
+#######################################################################################################################
+#                Edit attributs
+#######################################################################################################################
+
+def toogle_visible (object_, attribut) -> None :
+    """
+    Toogle attribut visibility state
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :return: None
+    """
+
+    if not cmds.getAttr("{}.{}".format(object_, attribut), channelBox=True) :
+        cmds.setAttr("{}.{}".format(object_, attribut), channelBox=True)
+    
+    else :
+        cmds.setAttr("{}.{}".format(object_, attribut), channelBox=False)
+
+def toogle_lock (object_, attribut) -> None :
+    """
+    Toogle attribut lock state
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :return: None
+    """
+
+    if not cmds.getAttr("{}.{}".format(object_, attribut), lock=True) :
+        cmds.setAttr("{}.{}".format(object_, attribut), lock=True)
+    
+    else :
+        cmds.setAttr("{}.{}".format(object_, attribut), lock=False)
+
+
+def toogle_keyable (object_, attribut) -> None :
+    """
+    Toogle attribut keyable state
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :return: None
+    """
+
+    if not cmds.getAttr("{}.{}".format(object_, attribut), keyable=True) :
+        cmds.setAttr("{}.{}".format(object_, attribut), keyable=True)
+    
+    else :
+        cmds.setAttr("{}.{}".format(object_, attribut), keyable=False, channelBox=True)
+
+def set_has_maximum_state (control_, attribut, value = False) :
+    """
+    Set attribut hasMaximumValue state
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :value: Bool
+    :return: None
+    """
+    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, hasMaxValue = value)
+    
+def set_has_minimum_state (control_, attribut, value = False) :
+    """
+    Set attribut hasMinimumValue state
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :value: Bool
+    :return: None
+    """
+    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, hasMinValue = value)
+    
+def set_maximum_value (control_, attribut, value) :
+    """
+    Set attribut maxValue
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :value: New max value
+    :return: None
+    """
+    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, maxValue = value)
+    
+def set_minimum_value (control_, attribut, value) :
+    """
+    Set attribut minValue
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :value: New min value
+    :return: None
+    """
+    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, minValue = value)
+    
+def set_defaut_value (control_, attribut, value) :
+    """
+    Set attribut dafaut value
+
+    :object_: Maya object with custom attribut
+    :attribut: Custom attribut to edit
+    :value: New defaut value
+    :return: None
+    """
+    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, defautValue = value)
+
+#######################################################################################################################
+#                Edit naming
+#######################################################################################################################
+
 def edit_long_name (object_, attribut, new_name) -> None :
     """
     Edit attribut long name
@@ -105,6 +220,10 @@ def edit_nice_name (object, attribut, new_nice_name) -> None :
 
     # Set new nice name
     cmds.addAttr(object_, ln = attribut, e=True, niceName = new_attr_name)
+
+#######################################################################################################################
+#                Utility
+#######################################################################################################################
 
 def get_attr_names (object_) -> list :
     """
@@ -151,3 +270,85 @@ def format_str_for_long_name (long_name) -> str :
         new_long_name = long_name
 
     return new_long_name
+
+def get_attribut_infos (object_, attribut) :
+    """
+    Copy custom attributs from an object to another
+    
+    :object_: Maya object with custom attributs
+    :attribut: attribut to copy
+    :return: attribut info in dic with keys [
+                "value", defaut_value, has_max_value, max_value,
+                has_min_value, min_value, attribute_type, categories, in_channel_box, keyable,
+                locked, enum_list, parent_attribut, children_attribut, long_name, nice_name,
+                "short_name", "incom_connections", "outcom_connections"
+                ]
+    """
+    
+    # Combine object and attribut strings
+    obj_attribut = "{}.{}".format(object_, attribut)
+    
+    # Value infos
+    value = cmds.getAttr(obj_attribut)
+    defaut_value = cmds.attributeQuery(attribut, node = object_, listDefault = True)
+    has_max_value = cmds.attributeQuery(attribut, node = object_, maxExists=True)
+    has_min_value = cmds.attributeQuery(attribut, node = object_, minExists=True)
+    
+    if has_max_value :
+        max_value = cmds.attributeQuery(attribut, node = object_, maximum=True)
+    else : 
+        max_value = None
+
+    if has_min_value :
+        min_value = cmds.attributeQuery(attribut, node = object_, minimum=True)
+    else : 
+        min_value = None
+
+    # Attribut parameters  
+    attribute_type = cmds.attributeQuery(attribut, node = object_, attributeType = True)
+    categories = cmds.attributeQuery(attribut, node = object_, categories = True)
+    in_channel_box = cmds.attributeQuery(attribut, node = object_, channelBox = True)
+    keyable = cmds.attributeQuery(attribut, node = object_, keyable = True)
+    locked = cmds.getAttr(obj_attribut, lock = True)
+    
+    # Enum string values
+    if attribute_type == "enum" :
+        enum_list = cmds.attributeQuery(attribut, node = object_, enum_list = True)
+    else :
+        enum_list = None
+    
+    # Hierarchie infos
+    parent_attribut = cmds.attributeQuery(attribut, node = object_, listParent = True)
+    children_attribut = cmds.attributeQuery(attribut, node = object_, listChildren = True)
+    
+    # Naming Infos
+    long_name = cmds.attributeQuery (attribut, node = object_, longName = True)
+    nice_name = cmds.attributeQuery (attribut, node = object_, niceName = True)
+    short_name = cmds.attributeQuery (attribut, node = object_, shortName = True)
+
+    # Connections info
+    incom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = True, source = False)
+    outcom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = False, source = True)
+
+    # output dict
+    out_dic = {"value" : value,
+                "defaut_value" : defaut_value,
+                "has_max_value" : has_max_value,
+                "max_value" : max_value,
+                "has_min_value" : has_min_value,
+                "min_value" : min_value,
+                "attribute_type" : attribute_type,
+                "categories" : categories,
+                "in_channel_box" : in_channel_box,
+                "keyable" : keyable,
+                "locked" : locked,
+                "enum_list" : enum_list,
+                "parent_attribut" : parent_attribut,
+                "children_attribut" : children_attribut,
+                "long_name" : long_name,
+                "nice_name" : nice_name,
+                "short_name" : short_name,
+                "incom_connections" : incom_connections,
+                "outcom_connections" : outcom_connections}
+
+    return out_dic
