@@ -1,4 +1,17 @@
-import maya.cmds
+#import maya.cmds
+
+# Custom decorator to check if data is correct type
+def is_type (type_) :
+    def decorator (func) :
+        def wrapper (*args, **kwargs):
+            print(*args)
+            print(**kwargs)
+            if isinstance(*args, type_) :
+                func()
+            else :
+                print ("unvalid data type ({}) excpected {}".format(type(*args), type_))
+        return wrapper
+    return decorator
 
 #######################################################################################################################
 #                Create, delete, copy attribut
@@ -79,147 +92,6 @@ def delete_attribut (object_, attribut) -> None :
     :return: None
     """
     cmds.deleteAttr("{}.{}".format(object_, attribut))
-
-
-
-#######################################################################################################################
-#                Edit attributs
-#######################################################################################################################
-
-def toogle_visible (object_, attribut) -> None :
-    """
-    Toogle attribut visibility state
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :return: None
-    """
-
-    if not cmds.getAttr("{}.{}".format(object_, attribut), channelBox=True) :
-        cmds.setAttr("{}.{}".format(object_, attribut), channelBox=True)
-    
-    else :
-        cmds.setAttr("{}.{}".format(object_, attribut), channelBox=False)
-
-def toogle_lock (object_, attribut) -> None :
-    """
-    Toogle attribut lock state
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :return: None
-    """
-
-    if not cmds.getAttr("{}.{}".format(object_, attribut), lock=True) :
-        cmds.setAttr("{}.{}".format(object_, attribut), lock=True)
-    
-    else :
-        cmds.setAttr("{}.{}".format(object_, attribut), lock=False)
-
-
-def toogle_keyable (object_, attribut) -> None :
-    """
-    Toogle attribut keyable state
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :return: None
-    """
-
-    if not cmds.getAttr("{}.{}".format(object_, attribut), keyable=True) :
-        cmds.setAttr("{}.{}".format(object_, attribut), keyable=True)
-    
-    else :
-        cmds.setAttr("{}.{}".format(object_, attribut), keyable=False, channelBox=True)
-
-def set_has_maximum_state (control_, attribut, value = False) :
-    """
-    Set attribut hasMaximumValue state
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :value: Bool
-    :return: None
-    """
-    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, hasMaxValue = value)
-    
-def set_has_minimum_state (control_, attribut, value = False) :
-    """
-    Set attribut hasMinimumValue state
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :value: Bool
-    :return: None
-    """
-    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, hasMinValue = value)
-    
-def set_maximum_value (control_, attribut, value) :
-    """
-    Set attribut maxValue
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :value: New max value
-    :return: None
-    """
-    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, maxValue = value)
-    
-def set_minimum_value (control_, attribut, value) :
-    """
-    Set attribut minValue
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :value: New min value
-    :return: None
-    """
-    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, minValue = value)
-    
-def set_defaut_value (control_, attribut, value) :
-    """
-    Set attribut dafaut value
-
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :value: New defaut value
-    :return: None
-    """
-    cmds.addAttr("{}.{}".format(control_, attribut), edit = True, defautValue = value)
-
-#######################################################################################################################
-#                Edit naming
-#######################################################################################################################
-
-def edit_long_name (object_, attribut, new_name) -> None :
-    """
-    Edit attribut long name
-    
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :new_name: New attribut name
-    :return: New attribut Name
-    """
-    # Format new_name 
-    new_attr_name = format_str_for_long_name(new_name)
-
-    # Rename attribut
-    cmds.renameAttr("{}.{}".format(object_, attribut), new_attr_name)
-
-def edit_nice_name (object, attribut, new_nice_name) -> None :
-    """
-    Edit attribut long name
-    
-    :object_: Maya object with custom attribut
-    :attribut: Custom attribut to edit
-    :new_nice_name: New attribut nice name
-    :return: New attribut nice Name
-    """
-    # Format new_name 
-    new_attr_name = format_str_for_long_name(new_nice_name)
-
-    # Set new nice name
-    cmds.addAttr(object_, ln = attribut, e=True, niceName = new_attr_name)
 
 #######################################################################################################################
 #                Utility
@@ -352,3 +224,140 @@ def get_attribut_infos (object_, attribut) :
                 "outcom_connections" : outcom_connections}
 
     return out_dic
+
+
+class Attribut () :
+    """
+    Maya objects attribut as python object
+    """
+
+    def __init__ (self, maya_obj, long_name, nice_name = "", short_name = "", parent_attribut = None, child_attribut = None,
+    value = 0, defaut_value = 0, has_max_value = False, max_value = None, has_min_value = False, min_value = None,
+    categories = None, attribut_type = "double", in_channel_box = True, keyable = True, locked = False, 
+    enum_list = "", incom_connections = None, outcom_connections = None) -> object :
+
+        self.maya_obj = maya_obj
+        self.long_name = long_name
+        self.nice_name = nice_name
+        self.short_name = short_name
+        
+        self.parent_attribut = parent_attribut
+        self.children_attribut = child_attribut
+
+        self.value = value
+        self.defaut_value = defaut_value
+        self.has_max_value = has_max_value
+        self.max_value = max_value
+        self.has_min_value = has_min_value
+        self.min_value = min_value
+        self.enum_list = enum_list
+        
+        self.attribute_type = attribut_type
+        self.categories = categories
+        
+        self.in_channel_box = in_channel_box
+        self.keyable = keyable
+        self.locked = locked
+        
+        self.incom_connections = incom_connections
+        self.outcom_connections = outcom_connections
+
+    #######################################################################################################################
+    #                Edit attribut
+    #######################################################################################################################
+    @is_type(str)
+    def edit_long_name (self, new_name) -> None :
+        """
+        Edit attribut long name
+         
+        :new_name: New attribut name
+        """ 
+        self.long_name = format_str_for_long_name(new_name)
+
+    def edit_nice_name (self, new_nice_name) -> None :
+        """
+        Edit attribut nice name
+
+        :new_nice_name: New attribut nice name
+        """
+        self.nice_name = format_str_for_long_name(new_nice_name)
+
+    def edit_short_name (self, new_short_name) -> None :
+        """
+        Edit attribut short name
+
+        :new_short_name: New attribut short name
+        """
+        self.short_name = format_str_for_long_name(new_short_name)
+
+    #######################################################################################################################
+
+    def set_has_maximum_state (self, value = False) :
+        """
+        Set self.has_max_value
+
+        :value: Bool
+        """
+        self.has_max_value = value
+        
+    def set_has_minimum_state (self, value = False) :
+        """
+        Set self.has_min_value
+
+        :value: Bool
+        """
+        self.has_min_value = value
+        
+    def set_maximum_value (self, value) :
+        """
+        Set self.max_value
+
+        :value: New max value
+        """
+        self.max_value = value
+        
+    def set_minimum_value (self, value) :
+        """
+        Set self.min_value
+
+        :value: New min value
+        """
+        self.min_value = value
+        
+    def set_defaut_value (self, value) :
+        """
+        Set self.dafaut_value
+
+        :value: New max value
+        """
+        self.max_value = value
+
+    #######################################################################################################################
+
+    def set_visible (self, state) -> None :
+        """
+        Set self.in_channel_box
+
+        :value: Bool
+        """
+        self.in_channel_box = state
+
+    def set_lock (self, state) -> None :
+        """
+        Set self.locked
+
+        :value: Bool
+        """
+        self.locked = state
+
+    def set_keyable (self, state) -> None :
+        """
+        Set self.keyable
+
+        :value: Bool
+        """
+
+        self.keyable = state
+    
+attr = Attribut("test_obj", "test_name")
+attr.edit_long_name("new_test_name")
