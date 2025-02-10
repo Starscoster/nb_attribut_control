@@ -1,15 +1,24 @@
-#import maya.cmds
+"""
+This is a module to catch maya control object, get custom attributs and edit them.
+@autor : Nathan Boyaval
+@Version : 0.0.1
+@Update : 2025/02/10
+"""
+# Tester les class objet et attribut. Tester l'edition de long_name, le try excet pour les type des variables
 
-# Custom decorator to check if data is correct type
+import maya.cmds
+
+
 def is_type (type_) :
+    """Custom decorator to check if data is correct type"""
     def decorator (func) :
-        def wrapper (*args, **kwargs):
-            print(*args)
-            print(**kwargs)
-            if isinstance(*args, type_) :
-                func()
+        def wrapper (*args, **kwargs) :
+            if isinstance(args[1], type_) :
+                func(*args)
             else :
-                print ("unvalid data type ({}) excpected {}".format(type(*args), type_))
+                raise TypeError (
+                    "Incorrect value type ({}); Needs {}, got {}".format(args[0], type_, args[1])
+                    )
         return wrapper
     return decorator
 
@@ -110,8 +119,11 @@ def get_custom_attr_names (object_) -> list :
     """
     Get a maya object custom attributs
 
-    :object_: maya object
-    :return: list of custom attributs in the object or an empty list
+    Keywords:
+        object_ -- maya object
+    
+    Returns :
+        list of custom attributs in the object or an empty list
     """
     # Get object_ type and create another one
     object_type = cmds.objectType(object_)
@@ -121,243 +133,239 @@ def get_custom_attr_names (object_) -> list :
     object_attributs = cmds.listAttr(object_)
     built_in_attributs = cmds.listAttr(built_in_object)
 
-    # Convert list to set. Substract both sets to get custom attributs
+    # Compare oth lists and get custom attributs
     custom_attributs = list(set(object_attributs)-set(built_in_attributs))
 
-    # Delete created object_
+    # Delete built_in_object
     cmds.delete(built_in_object)
 
     return custom_attributs
 
-def format_str_for_long_name (long_name) -> str :
-    """
-    Replaces " " by "_" in new attribut name
-
-    :long_name: in name
-    :return: formated name
-    """
-    if " " in long_name :
-        new_long_name = long_name.replace(" ", "_")
-    else :
-        new_long_name = long_name
-
-    return new_long_name
-
-def get_attribut_infos (object_, attribut) :
-    """
-    Copy custom attributs from an object to another
-    
-    :object_: Maya object with custom attributs
-    :attribut: attribut to copy
-    :return: attribut info in dic with keys [
-                "value", defaut_value, has_max_value, max_value,
-                has_min_value, min_value, attribute_type, categories, in_channel_box, keyable,
-                locked, enum_list, parent_attribut, children_attribut, long_name, nice_name,
-                "short_name", "incom_connections", "outcom_connections"
-                ]
-    """
-    
-    # Combine object and attribut strings
-    obj_attribut = "{}.{}".format(object_, attribut)
-    
-    # Value infos
-    value = cmds.getAttr(obj_attribut)
-    defaut_value = cmds.attributeQuery(attribut, node = object_, listDefault = True)
-    has_max_value = cmds.attributeQuery(attribut, node = object_, maxExists=True)
-    has_min_value = cmds.attributeQuery(attribut, node = object_, minExists=True)
-    
-    if has_max_value :
-        max_value = cmds.attributeQuery(attribut, node = object_, maximum=True)
-    else : 
-        max_value = None
-
-    if has_min_value :
-        min_value = cmds.attributeQuery(attribut, node = object_, minimum=True)
-    else : 
-        min_value = None
-
-    # Attribut parameters  
-    attribute_type = cmds.attributeQuery(attribut, node = object_, attributeType = True)
-    categories = cmds.attributeQuery(attribut, node = object_, categories = True)
-    in_channel_box = cmds.attributeQuery(attribut, node = object_, channelBox = True)
-    keyable = cmds.attributeQuery(attribut, node = object_, keyable = True)
-    locked = cmds.getAttr(obj_attribut, lock = True)
-    
-    # Enum string values
-    if attribute_type == "enum" :
-        enum_list = cmds.attributeQuery(attribut, node = object_, enum_list = True)
-    else :
-        enum_list = None
-    
-    # Hierarchie infos
-    parent_attribut = cmds.attributeQuery(attribut, node = object_, listParent = True)
-    children_attribut = cmds.attributeQuery(attribut, node = object_, listChildren = True)
-    
-    # Naming Infos
-    long_name = cmds.attributeQuery (attribut, node = object_, longName = True)
-    nice_name = cmds.attributeQuery (attribut, node = object_, niceName = True)
-    short_name = cmds.attributeQuery (attribut, node = object_, shortName = True)
-
-    # Connections info
-    incom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = True, source = False)
-    outcom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = False, source = True)
-
-    # output dict
-    out_dic = {"value" : value,
-                "defaut_value" : defaut_value,
-                "has_max_value" : has_max_value,
-                "max_value" : max_value,
-                "has_min_value" : has_min_value,
-                "min_value" : min_value,
-                "attribute_type" : attribute_type,
-                "categories" : categories,
-                "in_channel_box" : in_channel_box,
-                "keyable" : keyable,
-                "locked" : locked,
-                "enum_list" : enum_list,
-                "parent_attribut" : parent_attribut,
-                "children_attribut" : children_attribut,
-                "long_name" : long_name,
-                "nice_name" : nice_name,
-                "short_name" : short_name,
-                "incom_connections" : incom_connections,
-                "outcom_connections" : outcom_connections}
-
-    return out_dic
-
-
 class Attribut () :
     """
-    Maya objects attribut as python object
+    New object based on one of maya's object attribut.
     """
 
-    def __init__ (self, maya_obj, long_name, nice_name = "", short_name = "", parent_attribut = None, child_attribut = None,
-    value = 0, defaut_value = 0, has_max_value = False, max_value = None, has_min_value = False, min_value = None,
-    categories = None, attribut_type = "double", in_channel_box = True, keyable = True, locked = False, 
-    enum_list = "", incom_connections = None, outcom_connections = None) -> object :
+    def __init__ (
+        self, maya_obj, long_name
+        ) -> object :
+        """
+        Create class variables.
+
+        Keyword arguments:
+            maya_obj -- maya's object that attribut is part of
+            long_name -- attribut full name
+        Returns:
+            None
+        """
 
         self.maya_obj = maya_obj
         self.long_name = long_name
-        self.nice_name = nice_name
-        self.short_name = short_name
-        
-        self.parent_attribut = parent_attribut
-        self.children_attribut = child_attribut
 
-        self.value = value
-        self.defaut_value = defaut_value
-        self.has_max_value = has_max_value
-        self.max_value = max_value
-        self.has_min_value = has_min_value
-        self.min_value = min_value
-        self.enum_list = enum_list
+        obj_attribut = "{}.{}".format(maya_obj, self.long_name)
+
+        self.nice_name = cmds.attributeQuery(long_name, node = maya_obj, niceName = True)
+        self.short_name = cmds.attributeQuery(long_name, node = maya_obj, shortName = True)
         
-        self.attribute_type = attribut_type
-        self.categories = categories
+        self.parent_attribut = cmds.attributeQuery(long_name, node = maya_obj, listParent = True)
+        self.child_attribut = cmds.attributeQuery(long_name, node = maya_obj, listChildren = True)
+
+        self.value = cmds.getAttr(obj_attribut)
+        self.defaut_value = cmds.attributeQuery(long_name, node = maya_obj, listDefault = True)
+        self.has_max_value = cmds.attributeQuery(long_name, node = maya_obj, maxExists=True)
+        self.has_min_value = cmds.attributeQuery(long_name, node = maya_obj, minExists=True)
+        self.enum_list = cmds.attributeQuery(long_name, node = maya_obj, listEnum = True)
+
+        # Check if attribut has minimium or maximum value and set self.min_values and self.max_values
+        if self.has_max_value :
+            self.max_value = cmds.attributeQuery(long_name, node = maya_obj, maximum=True)
+        else :
+            self.max_value = None
+    
+        if self.has_min_value :
+            self.min_value = cmds.attributeQuery(long_name, node = maya_obj, minimum=True)
+        else :
+            self.min_value = None
         
-        self.in_channel_box = in_channel_box
-        self.keyable = keyable
-        self.locked = locked
+        self.attribute_type = cmds.attributeQuery(long_name, node = maya_obj, attributeType = True)
         
-        self.incom_connections = incom_connections
-        self.outcom_connections = outcom_connections
+        self.in_channel_box = cmds.attributeQuery(long_name, node = maya_obj, channelBox = True)
+        self.keyable = cmds.attributeQuery(long_name, node = maya_obj, keyable = True)
+        self.locked = cmds.getAttr(obj_attribut, lock = True)
+        
+        self.incom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = True, source = False)
+        self.outcom_connections = cmds.listConnections(obj_attribut, plugs = True, destination = False, source = True)
 
     #######################################################################################################################
     #                Edit attribut
     #######################################################################################################################
     @is_type(str)
     def edit_long_name (self, new_name) -> None :
-        """
-        Edit attribut long name
-         
-        :new_name: New attribut name
-        """ 
-        self.long_name = format_str_for_long_name(new_name)
+        """Edit attribut long name""" 
+        self.long_name = new_name.replace(" ", "_")
+        self.edit_nice_name(new_name)
+        self.edit_short_name(new_name)
+        return True
 
+    @is_type(str)
     def edit_nice_name (self, new_nice_name) -> None :
-        """
-        Edit attribut nice name
+        """Edit attribut nice name"""
+        formated_name = new_nice_name.replace("_"," ")
+        self.nice_name = formated_name
+        return True
 
-        :new_nice_name: New attribut nice name
-        """
-        self.nice_name = format_str_for_long_name(new_nice_name)
-
+    @is_type(str)
     def edit_short_name (self, new_short_name) -> None :
-        """
-        Edit attribut short name
-
-        :new_short_name: New attribut short name
-        """
-        self.short_name = format_str_for_long_name(new_short_name)
+        """Edit attribut short name"""
+        no_space = new_short_name.replace(" ","_")
+        initial_word = ''.join([word[0] for word in no_space.split("_")])       # Get initial of each word in attribut name
+        self.short_name = initial_word
+        return True
 
     #######################################################################################################################
-
+    @is_type(bool)
     def set_has_maximum_state (self, value = False) :
-        """
-        Set self.has_max_value
-
-        :value: Bool
-        """
+        """Set self.has_max_value"""
         self.has_max_value = value
-        
+        return True
+
+    @is_type(bool)   
     def set_has_minimum_state (self, value = False) :
-        """
-        Set self.has_min_value
-
-        :value: Bool
-        """
+        """Set self.has_min_value"""
         self.has_min_value = value
-        
+        return True
+
+    @is_type(float)
     def set_maximum_value (self, value) :
-        """
-        Set self.max_value
-
-        :value: New max value
-        """
+        """Set self.maxValue"""
         self.max_value = value
-        
+        return True
+
+    @is_type(float)    
     def set_minimum_value (self, value) :
-        """
-        Set self.min_value
-
-        :value: New min value
-        """
+        """Set self.min_value """
         self.min_value = value
-        
-    def set_defaut_value (self, value) :
-        """
-        Set self.dafaut_value
+        return True
 
-        :value: New max value
-        """
+    @is_type(float)   
+    def set_defaut_value (self, value) :
+        """Set self.dafaut_value"""
         self.max_value = value
+        return True
 
     #######################################################################################################################
-
+    @is_type(bool)
     def set_visible (self, state) -> None :
-        """
-        Set self.in_channel_box
-
-        :value: Bool
-        """
+        """Set self.in_channel_box"""
         self.in_channel_box = state
+        return True
 
+    @is_type(bool)
     def set_lock (self, state) -> None :
-        """
-        Set self.locked
-
-        :value: Bool
-        """
+        """Set self.locked"""
         self.locked = state
+        return True
 
+    @is_type(bool)
     def set_keyable (self, state) -> None :
-        """
-        Set self.keyable
-
-        :value: Bool
-        """
-
+        """Set self.keyable"""
         self.keyable = state
+        return True
+
+
+class MayaObject () :
+    """Maya Object as python object"""
+
+    def __init__ (
+        self, object_name
+        ) -> object :
+        self.object_name = object_name
+        self.custom_attributs = get_custom_attr_names(object_name)
+        self.attributs_dic = {}
+
+    def create_attributs_class (
+        self
+        ) -> dict :
+        """Fil self.attributs_dic"""
+
+        for attr in self.custom_attributs :
+            attr_class = Attribut(self.object_name, long_name = attr)
+            attr_index = self.custom_attributs.index(attr)
+            self.attributs_dic[attr] = {"class" : attr_class, "index" : attr_index}
+
+        return True
+
+    def get_attribut_object (
+        self, attribut
+        ) -> None :
+        """Get attribut class object"""
+
+        try  :
+            attribut_class = self.attributs_dic[attribut]["class"]
+        except KeyError :
+            return None
+        return attribut_class
+
+
+    def edit_long_name (self, attribut, new_name) -> None :
+        """Edit attribut long name"""
+        attribut_obj = self.get_attribut_object(attribut)
+        if attribut_obj :
+            attribut_obj.edit_long_name(new_name)
+        return True
+
+    def edit_nice_name (self, attribut, new_nice_name) -> None :
+        """Edit attribut nice name"""
+        formated_name = new_nice_name.replace("_"," ")
+        self.nice_name = formated_name
+        return True
+
+    def edit_short_name (self, attribut, new_short_name) -> None :
+        """Edit attribut short name"""
+        no_space = new_short_name.replace(" ","_")
+        initial_word = ''.join([word[0] for word in no_space.split("_")])       # Get initial of each word in attribut name
+        self.short_name = initial_word
+        return True
+
+    def set_has_maximum_state (self, attribut, value = False) :
+        """Set self.has_max_value"""
+        self.has_max_value = value
+        return True
+ 
+    def set_has_minimum_state (self, attribut, value = False) :
+        """Set self.has_min_value"""
+        self.has_min_value = value
+        return True
+
+    def set_maximum_value (self, attribut, value) :
+        """Set self.maxValue"""
+        self.max_value = value
+        return True
+   
+    def set_minimum_value (self, attribut, value) :
+        """Set self.min_value """
+        self.min_value = value
+        return True
+  
+    def set_defaut_value (self, attribut, value) :
+        """Set self.dafaut_value"""
+        self.max_value = value
+        return True
+
+    def set_visible (self, attribut, state) -> None :
+        """Set self.in_channel_box"""
+        self.in_channel_box = state
+        return True
+
+    def set_lock (self, attribut, state) -> None :
+        """Set self.locked"""
+        self.locked = state
+        return True
+
+    def set_keyable (self, attribut, state) -> None :
+        """Set self.keyable"""
+        self.keyable = state
+        return True
     
-attr = Attribut("test_obj", "test_name")
+attr = Attribut("nurbsCircle1", "test")
 attr.edit_long_name("new_test_name")
