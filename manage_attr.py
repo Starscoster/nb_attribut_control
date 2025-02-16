@@ -1,11 +1,9 @@
 """
 This is a module to catch maya control object, get custom attributs and edit them.
 @autor : Nathan Boyaval
-@Version : 0.0.2
-@Update : 2025/02/11
+@Version : 0.0.3
+@Update : 2025/02/16
 """
-# # Error: RuntimeError: file <maya console> line 86: Attribute name not recognized. #
-# ==> When attribut is created by hand, can't get attributes parameters in maya
 
 import maya.cmds
 
@@ -22,7 +20,7 @@ def is_type (type_) :
         return wrapper
     return decorator
 
-attribut_type = [
+attribut_type: list = [
     "bool", "long", "short",
     "byte", "char", "float",
     "double", "doubleAngle", "doubleLinear",
@@ -68,7 +66,8 @@ class Attribut () :
     """
 
     def __init__ (
-        self, maya_obj, long_name
+        self, maya_obj, long_name = "attribut1",
+        in_maya = False,
         ) -> object :
         """
         Create class variables.
@@ -80,10 +79,43 @@ class Attribut () :
             None
         """
 
-        self.maya_obj = maya_obj
-        self.long_name = long_name
+        self.maya_obj: str = maya_obj
+        self.long_name: str = long_name
 
-        obj_attribut = "{}.{}".format(maya_obj, self.long_name)
+        # Create variable and edit them later
+        self.nice_name: str = "Attribut 1"
+        self.short_name: str = "att1"
+
+        self.parent_attribut: str = ""
+        self.child_attribut: str = ""
+
+        self.value: float = 0
+        self.defaut_value: float = 0
+        self.has_max_value: bool = False
+        self.has_min_value: bool = False
+        self.enum_list: str = ""
+        self.max_value: float = 0
+        self.min_value: float = 0
+        
+        self.attribute_type: str = "float"
+        
+        self.in_channel_box: bool = False
+        self.keyable: bool = False
+        self.locked: bool = False
+        
+        self.incom_connections: list = []
+        self.outcom_connections: list = []
+
+        if in_maya :
+            self.load_maya_attribut()
+        else :
+            self.edit_nice_name(self.long_name)
+            self.edit_short_name(self.long_name)
+
+
+    def load_maya_attribut (self) -> None :
+
+        obj_attribut = "{}.{}".format(self.maya_obj, self.long_name)
 
         self.nice_name = cmds.attributeQuery(long_name, node = maya_obj, niceName = True)
         self.short_name = cmds.attributeQuery(long_name, node = maya_obj, shortName = True)
@@ -132,7 +164,7 @@ class Attribut () :
     def edit_nice_name (self, new_nice_name) -> None :
         """Edit attribut nice name"""
         formated_name = new_nice_name.replace("_"," ")
-        self.nice_name = formated_name
+        self.nice_name = formated_name.title()
         return True
 
     @is_type(str)
@@ -193,6 +225,7 @@ class Attribut () :
         self.keyable = state
         return True
 
+    @is_type(str)
     def set_attribut_type (self, new_type) -> bool :
         """Set self.attribut_type"""
         if new_type in attribut_type :
@@ -204,51 +237,114 @@ class Attribut () :
     def commit_attr (self) -> bool :                            
         """Create attribut in maya_object."""
 
-        # bool attributs
-        if attribut_type == "bool" :        
+        if self.parent_attribut :
             cmds.addAttr(
-                self.maya_obj, longName = self.long_name, niceName = self.nice_name,
-                shortName = self.short_name, parent = self.parent_attribut, defautValue = self.defaut_value,
-                hasMaxValue = self.has_max_value, hasMinValue = self.has_min_value, maxValue = self.max_value,
-                minValue = self.min_value, attributType = self.attribute_type, hidden = self.in_channel_box,
+                self.maya_obj,
+                longName = self.long_name, 
+                niceName = self.nice_name,
+                shortName = self.short_name, 
+                defaultValue = self.defaut_value,
+                parent = self.parent_attribut,
+                hasMaxValue = self.has_max_value, 
+                hasMinValue = self.has_min_value, 
+                maxValue = self.max_value,
+                minValue = self.min_value, 
+                attributeType = self.attribute_type, 
+                hidden = self.in_channel_box,
                 keyable=self.keyable,
-                )
-
-        # long, short, byte, char, float, double, doubleAngle, doubleLinear attributs
-        elif attribut_type == "long" or attribut_type == "short" or attribut_type == "byte" or attribut_type == "char" or attribut_type == "float" or attribut_type == "double" or attribut_type == "doubleAngle" or attribut_type == "doubleLinear":
-            cmds.addAttr(object_, longName = attribut_name, at = attribut_type, defaultValue = attribut_defaut, k=True)
+                    )
+        else :
+            cmds.addAttr(
+                self.maya_obj,
+                longName = self.long_name, 
+                niceName = self.nice_name,
+                shortName = self.short_name, 
+                defaultValue = self.defaut_value,
+                hasMaxValue = self.has_max_value, 
+                hasMinValue = self.has_min_value, 
+                maxValue = self.max_value,
+                minValue = self.min_value, 
+                attributeType = self.attribute_type, 
+                hidden = self.in_channel_box,
+                keyable=self.keyable,
+                    )
+        # if (self.attribut_type == "long" or
+        #     self.attribut_type == "short" or
+        #     self.attribut_type == "byte" or
+        #     self.attribut_type == "char" or
+        #     self.attribut_type == "float" or
+        #     self.attribut_type == "double" or
+        #     self.attribut_type == "doubleAngle" or
+        #     self.attribut_type == "doubleLinear" or
+        #     self.attribut_type == "bool"):
+        #     # If one of those attribut, do it
+        #     cmds.addAttr(
+        #         self.maya_obj,
+        #         longName = self.long_name, 
+        #         niceName = self.nice_name,
+        #         shortName = self.short_name, 
+        #         parent = self.parent_attribut, 
+        #         defautValue = self.defaut_value,
+        #         hasMaxValue = self.has_max_value, 
+        #         hasMinValue = self.has_min_value, 
+        #         maxValue = self.max_value,
+        #         minValue = self.min_value, 
+        #         attributType = self.attribute_type, 
+        #         hidden = self.in_channel_box,
+        #         keyable=self.keyable,
+        #         )
         
-        # enum attributs
-        elif attribut_type == "enum" :
-            cmds.addAttr(object_, longName = attribut_name, at = attribut_type, enumName = enum_values, k=True)
+        # # enum attributs
+        # elif self.attribut_type == "enum" :
+        #     cmds.addAttr(
+        #         self.maya_obj,
+        #         longName = attribut_name, 
+        #         niceName = self.nice_name,
+        #         shortName = self.short_name, 
+        #         parent = self.parent_attribut,
+        #         defautValue = self.defaut_value,
+        #         enumName = self.enum_list,
+        #         attributType = self.attribute_type, 
+        #         hidden = self.in_channel_box,
+        #         keyable=self.keyable,
+        #         )
         
-        # matrix attibuts
-        elif attribut_type == "matrix" :
-            cmds.addAttr(object_, longName = attribut_name, at = attribut_type)
+        # # matrix attibuts
+        # elif self.attribut_type == "matrix" :
+        #     cmds.addAttr(
+        #         self.maya_obj,
+        #         longName = attribut_name, 
+        #         niceName = self.nice_name,
+        #         shortName = self.short_name, 
+        #         parent = self.parent_attribut,
+        #         attributType = self.attribut_type,
+        #         hidden = self.in_channel_box,
+        #         keyable=self.keyable,
+        #         )
 
         # combo attributs
-        elif "2" in attribut_type or "3" in attribut_type :
+        # elif "2" in attribut_type or "3" in attribut_type :
 
-            sub_attributs_type = attribut_type[:-1]     # Get attribut types to create
-            number_of_attr = int(attribut_type[-1])     # Get number of attributs to creates
+        #     sub_attributs_type = attribut_type[:-1]     # Get attribut types to create
+        #     number_of_attr = int(attribut_type[-1])     # Get number of attributs to creates
 
-            # Creates combo attribut
-            cmds.addAttr(object_, longName = attribut_name, at = attribut_type, k=True)
+        #     # Creates combo attribut
+        #     cmds.addAttr(object_, longName = attribut_name, at = attribut_type, k=True)
 
-            # Create sub attributs
-            for i in range(number_of_attr) :
+        #     # Create sub attributs
+        #     for i in range(number_of_attr) :
 
-                # If multiple_attr_flags variable is set, use it otherwise use numbers as suffix
-                if i <= len(multiple_attr_flags) -1 :
-                    suffix_to_add = multiple_attr_flags[i]
-                else :
-                    suffix_to_add = i
+        #         # If multiple_attr_flags variable is set, use it otherwise use numbers as suffix
+        #         if i <= len(multiple_attr_flags) -1 :
+        #             suffix_to_add = multiple_attr_flags[i]
+        #         else :
+        #             suffix_to_add = i
 
-                cmds.addAttr(object_, longName = "{}{}".format(attribut_name, suffix_to_add), at = sub_attributs_type, parent = attribut_name, k=True)
+        #         cmds.addAttr(object_, longName = "{}{}".format(attribut_name, suffix_to_add), at = sub_attributs_type, parent = attribut_name, k=True)
         
-        # If attribut_type don't match supported attributs, raise an error
-        else :
-            cmds.error("Unvalid attribut type : {}".format(attribut_type))
+        # # If attribut_type don't match supported attributs, raise an error
+        # else :
+        #     cmds.error("Unvalid attribut type : {}".format(attribut_type))
 
         cmds.setAttr("{}.{}".format(self.maya_obj, self.long_name), lock = self.locked)
         cmds.setAttr("{}.{}".format(self.maya_obj, self.long_name), self.value)
@@ -319,70 +415,60 @@ class MayaObject () :
     def edit_nice_name (
         self, attribut, new_nice_name
         ) -> None or str:
-        """Edit attribut nice name"""
         self.get_attribut_object(attribut).edit_nice_name(new_nice_name)
 
     @check_attribut
     def edit_short_name (
         self, attribut, new_short_name
         ) -> None or str:
-        """Edit attribut short name"""
         self.get_attribut_object(attribut).edit_short_name(new_short_name)
 
     @check_attribut
     def set_has_maximum_state (
         self, attribut, value = False
         ) -> None or bool:
-        """Set self.has_max_value"""
         self.get_attribut_object(attribut).set_has_maximum_state(value)
     
     @check_attribut
     def set_has_minimum_state (
         self, attribut, value = False
         ) -> None or bool:
-        """Set self.has_min_value"""
         self.get_attribut_object(attribut).set_has_minimum_state(value)
 
     @check_attribut
     def set_maximum_value (
         self, attribut, value
         ) -> None or float:
-        """Set self.maxValue"""
         self.get_attribut_object(attribut).set_maximum_value(value)
     
     @check_attribut
     def set_minimum_value (
         self, attribut, value
         ) -> None or float:
-        """Set self.min_value """
         self.get_attribut_object(attribut).set_minimum_value(value)
     
     @check_attribut
     def set_defaut_value (
         self, attribut, value
         ) -> None or float:
-        """Set self.dafaut_value"""
         self.get_attribut_object(attribut).set_defaut_value(value)
 
     @check_attribut
     def set_visible (
         self, attribut, state
         ) -> None or bool:
-        """Set self.in_channel_box"""
         self.get_attribut_object(attribut).set_visible(state)
 
     @check_attribut
     def set_lock (
         self, attribut, state
         ) -> None or bool :
-        """Set self.locked"""
         self.get_attribut_object(attribut).set_lock(state)
 
     @check_attribut
     def set_keyable (
         self, attribut, state
         ) -> None or bool :
-        """Set self.keyable"""
         self.get_attribut_object(attribut).set_keyable(state)
 
     @check_attribut
@@ -412,8 +498,9 @@ class MayaObject () :
         if attribut_name not in self.custom_attributs :
             self.custom_attributs.append(attribut_name)
             self.custom_attributs_count += 1
+
         if attribut_name not in self.attributs_dic.keys() :
-            attr_class = Attribut(self.object_name, attribut_name)
+            attr_class = Attribut(self.object_name, long_name = attribut_name)
             attribut_index = len(self.custom_attributs) - 1
             self.attributs_dic[attribut_name] = {"class" : attr_class, "index" : attribut_index}
         return (self.custom_attributs, self.attributs_dic, self.custom_attributs_count)
@@ -457,7 +544,8 @@ class MayaObject () :
     def commit_attributs (self) -> None :
         """Creates all attributs in maya"""
         for attribut in self.custom_attributs :
-            if not self.delete_maya_attribut(attribut) :
+            is_deleted = self.delete_maya_attribut(attribut)
+            if not is_deleted :
                 cmds.warning("Attribut {} does not exists".format(attribut))
 
             attr_class = self.attributs_dic[attribut]["class"]
