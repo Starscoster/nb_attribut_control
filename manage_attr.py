@@ -5,7 +5,7 @@ This is a module to catch maya control object, get custom attributs and edit the
 @Update : 2025/02/19
 """
 
-import maya.cmds
+import maya.cmds as cmds
 
 def is_type (type_) :
     """Custom decorator to check if data is correct type"""
@@ -469,11 +469,3 @@ class MayaObject () :
             cmds.deleteAttr (obj_attr)
             return True
         return False
-
-    
-    
-obj_ = MayaObject("nurbsCircle1")
-print (obj_.custom_attributs)
-print (obj_.attributs_dic)
-obj_.add_attribut("test_bool")
-obj_.commit_attributs()
